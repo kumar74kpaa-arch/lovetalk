@@ -100,7 +100,7 @@ export default function MessageInput({ onSendMessage, onSendVoice }: MessageInpu
   }
 
   return (
-    <div className="p-4 border-t border-white/20 shrink-0 backdrop-blur-sm bg-background/50 sticky bottom-0">
+    <div className="p-4 border-t border-white/20 shrink-0 backdrop-blur-sm bg-background/30 sticky bottom-0">
       <div className="flex items-end gap-2 relative">
         {isRecording ? (
           <div className="w-full flex items-center justify-between bg-card p-2 rounded-full">

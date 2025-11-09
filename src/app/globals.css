@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 67% 94%; /* #f9e3e3 */
+    --background: 348 100% 98%; /* #fff5f7 */
     --foreground: 0 23% 24%; /* #4a2e2e */
     --card: 345 100% 98%; /* #fff6f8 */
     --card-foreground: 0 23% 24%; /* #4a2e2e */
@@ -81,8 +81,24 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--secondary)) 100%);
-    min-height: 100vh;
+  }
+  
+  .bg-wallpaper {
+    background-image: url('https://images.unsplash.com/photo-1518707606294-622424068357?q=80&w=2070&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center;
+  }
+
+  .bg-wallpaper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    backdrop-filter: blur(4px);
+    z-index: -1;
   }
 }
 
@@ -115,6 +131,25 @@
     to {
       opacity: 0;
       transform: translate(-50%, -50px) scale(0.5);
+    }
+  }
+
+  .petal {
+    position: fixed;
+    top: -10%;
+    font-size: 2rem;
+    animation: fall 15s linear infinite;
+    opacity: 0.7;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  @keyframes fall {
+    0% {
+      transform: translateY(-10vh) rotate(0deg);
+    }
+    100% {
+      transform: translateY(110vh) rotate(360deg);
     }
   }
 }

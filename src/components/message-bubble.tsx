@@ -13,12 +13,17 @@ export default function MessageBubble({ message, currentUser, onAddReaction }: M
   const isCurrentUser = message.userId === currentUser.id;
   
   const bubbleClasses = cn(
-    'p-3 rounded-2xl max-w-sm md:max-w-md relative group',
+    'p-3 rounded-2xl max-w-sm md:max-w-md relative group text-foreground',
     {
-      'bg-secondary text-secondary-foreground self-end rounded-br-lg': isCurrentUser,
-      'bg-card text-card-foreground self-start rounded-bl-lg': !isCurrentUser,
+      'self-end rounded-br-lg': isCurrentUser,
+      'self-start rounded-bl-lg': !isCurrentUser,
     }
   );
+
+  const bubbleStyle: React.CSSProperties = isCurrentUser 
+    ? { backgroundColor: 'rgba(217, 142, 115, 0.85)' }
+    : { backgroundColor: 'rgba(255, 246, 248, 0.85)' };
+
 
   const containerClasses = cn('flex', {
     'justify-end': isCurrentUser,
@@ -29,7 +34,7 @@ export default function MessageBubble({ message, currentUser, onAddReaction }: M
 
   return (
     <div className={containerClasses}>
-      <div className={bubbleClasses}>
+      <div className={bubbleClasses} style={bubbleStyle}>
         <div className="absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={isCurrentUser ? {left: '-2rem'} : {right: '-2rem'}}>
             <ReactionPicker onSelect={(emoji) => onAddReaction(message.id, emoji)} />
         </div>
