@@ -41,8 +41,10 @@ export default function MessageInput({ onSendMessage, onSendVoice }: MessageInpu
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        onSendVoice(audioBlob);
+        if (audioChunks.length > 0) {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            onSendVoice(audioBlob);
+        }
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -62,21 +64,26 @@ export default function MessageInput({ onSendMessage, onSendVoice }: MessageInpu
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (cancel = false) => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+      if (cancel) {
+          // To cancel, we just stop the tracks, and don't call mediaRecorder.stop()
+          // which would trigger onstop and send the (partial) recording.
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      } else {
+          mediaRecorderRef.current.stop();
+      }
       setIsRecording(false);
       if(recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
     }
   };
+  
+  const handleMicPress = () => {
+      startRecording();
+  };
 
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        if(recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        setRecordingTime(0);
-    }
+  const handleMicRelease = () => {
+      stopRecording(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -103,17 +110,11 @@ export default function MessageInput({ onSendMessage, onSendVoice }: MessageInpu
     <div className="p-4 border-t border-white/20 shrink-0 backdrop-blur-sm bg-background/30 sticky bottom-0">
       <div className="flex items-end gap-2 relative">
         {isRecording ? (
-          <div className="w-full flex items-center justify-between bg-card p-2 rounded-full">
-            <Button variant="ghost" size="icon" className="text-destructive" onClick={cancelRecording}>
-                <Trash2 size={24} />
-            </Button>
-            <div className="flex items-center gap-2">
-                <Heart className="text-accent heart-pulse" size={20} />
+          <div className="w-full flex items-center justify-center bg-transparent p-2 rounded-full">
+            <div className="flex items-center gap-2 text-accent">
+                <Heart className="text-accent heart-pulse" size={24} />
                 <span className="font-mono text-lg">{formatTime(recordingTime)}</span>
             </div>
-            <Button variant="ghost" size="icon" className="bg-accent rounded-full h-12 w-12" onClick={stopRecording}>
-              <Send className="text-accent-foreground" />
-            </Button>
           </div>
         ) : (
           <>
@@ -126,13 +127,22 @@ export default function MessageInput({ onSendMessage, onSendVoice }: MessageInpu
               onKeyDown={handleKeyDown}
             />
             <div className="relative">
-              <Button onClick={text ? handleSend : startRecording} size="icon" className="rounded-full w-12 h-12 bg-primary hover:bg-primary/90 shrink-0">
-                {text ? (
+              {text ? (
+                <Button onClick={handleSend} size="icon" className="rounded-full w-12 h-12 bg-primary hover:bg-primary/90 shrink-0">
                     <Send className="text-primary-foreground" />
-                ) : (
+                </Button>
+              ) : (
+                <Button 
+                    onMouseDown={handleMicPress}
+                    onMouseUp={handleMicRelease}
+                    onTouchStart={handleMicPress}
+                    onTouchEnd={handleMicRelease}
+                    size="icon" 
+                    className="rounded-full w-12 h-12 bg-primary hover:bg-primary/90 shrink-0"
+                >
                     <Mic className="text-primary-foreground" />
-                )}
-              </Button>
+                </Button>
+              )}
               {showHeartAnimation && (
                 <div className="heart-send-animation text-accent">
                   <Heart size={30} fill="currentColor" />
