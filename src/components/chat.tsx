@@ -12,6 +12,7 @@ import MessageInput from '@/components/message-input';
 import UserSwitcher from '@/components/user-switcher';
 import { useToast } from '@/hooks/use-toast';
 import FirebaseClientProvider from '@/firebase/client-provider';
+import Lightbox from './lightbox';
 
 const users: { [key: string]: User } = {
   user1: { id: 'user1', name: 'You' },
@@ -23,6 +24,7 @@ function ChatComponent() {
   const [currentUser, setCurrentUser] = useState<User>(users.user1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loveStreak, setLoveStreak] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -115,6 +117,48 @@ function ChatComponent() {
       });
     }
   };
+  
+  const handleSendFile = async (file: File) => {
+    if (!db || !storage) return;
+    
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      toast({ title: "Invalid File", description: "Please select an image or video file.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const folder = isImage ? 'images' : 'videos';
+      const storageRef = ref(storage, `${folder}/${uuidv4()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      const message: Partial<Message> = {
+        text: '',
+        type: isImage ? 'image' : 'video',
+        createdAt: serverTimestamp(),
+        userId: currentUser.id,
+        reactions: {},
+      };
+      if (isImage) {
+        message.imageUrl = downloadURL;
+      } else {
+        message.videoUrl = downloadURL;
+      }
+
+      await addDoc(collection(db, 'messages'), message);
+      await checkAndSetFirstMessage(db);
+    } catch (error) {
+      console.error(`Error uploading ${isImage ? 'image' : 'video'}: `, error);
+      toast({
+        title: "Upload Failed",
+        description: `Could not send ${isImage ? 'image' : 'video'}. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
     if (!db) return;
@@ -144,9 +188,10 @@ function ChatComponent() {
   return (
     <div className="flex flex-col h-full bg-transparent max-w-2xl mx-auto w-full">
       <ChatHeader loveStreak={loveStreak} />
-      <MessageList messages={messages} currentUser={currentUser} onAddReaction={handleAddReaction} />
-      <MessageInput onSendMessage={handleSendMessage} onSendVoice={handleSendVoice} />
+      <MessageList messages={messages} currentUser={currentUser} onAddReaction={handleAddReaction} onImageClick={setLightboxImage} />
+      <MessageInput onSendMessage={handleSendMessage} onSendVoice={handleSendVoice} onSendFile={handleSendFile}/>
       <UserSwitcher currentUser={currentUser} setCurrentUser={setCurrentUser} users={Object.values(users)} />
+      {lightboxImage && <Lightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />}
     </div>
   );
 }

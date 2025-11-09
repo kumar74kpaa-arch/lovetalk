@@ -8,8 +8,10 @@ export type User = {
 export type Message = {
   id: string;
   text: string;
-  type: 'text' | 'voice';
+  type: 'text' | 'voice' | 'image' | 'video';
   voiceUrl?: string;
+  imageUrl?: string;
+  videoUrl?: string;
   userId: User['id'];
   createdAt: Timestamp;
   reactions: Record<string, string[]>; // emoji -> userIds

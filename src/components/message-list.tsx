@@ -6,9 +6,10 @@ type MessageListProps = {
   messages: Message[];
   currentUser: User;
   onAddReaction: (messageId: string, emoji: string) => void;
+  onImageClick: (imageUrl: string) => void;
 };
 
-export default function MessageList({ messages, currentUser, onAddReaction }: MessageListProps) {
+export default function MessageList({ messages, currentUser, onAddReaction, onImageClick }: MessageListProps) {
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function MessageList({ messages, currentUser, onAddReaction }: Me
   return (
     <div className="flex-1 p-4 overflow-y-auto space-y-4">
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} currentUser={currentUser} onAddReaction={onAddReaction} />
+        <MessageBubble key={message.id} message={message} currentUser={currentUser} onAddReaction={onAddReaction} onImageClick={onImageClick}/>
       ))}
       <div ref={endOfMessagesRef} />
     </div>
