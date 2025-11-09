@@ -135,7 +135,7 @@ export default function MessageInput({ onSendMessage, onSendVoice, onSendFile }:
         {isRecording ? (
           <div className="w-full flex items-center justify-center bg-transparent p-2 rounded-full">
             <div className="flex items-center gap-2 text-accent">
-                <Heart className="text-accent heart-pulse" size={24} />
+                <Heart className="text-accent heart-pulse cursor-pointer" size={24} onClick={() => stopRecording(false)} />
                 <span className="font-mono text-lg">{formatTime(recordingTime)}</span>
             </div>
           </div>
