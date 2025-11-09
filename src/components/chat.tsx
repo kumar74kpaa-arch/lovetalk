@@ -21,7 +21,7 @@ const users: { [key: string]: User } = {
 async function uploadToCloudinary(file: File | Blob, resourceType: 'image' | 'video' | 'raw'): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'chat-app-unsigned');
+  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
   
   const endpoint = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
 
