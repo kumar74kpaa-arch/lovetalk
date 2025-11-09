@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc, Firestore } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { useFirebase } from '@/firebase';
+import { useFirebase } from '@/firebase/client-provider';
 import type { Message, User, ChatMetadata } from '@/lib/types';
 import ChatHeader from '@/components/chat-header';
 import MessageList from '@/components/message-list';
