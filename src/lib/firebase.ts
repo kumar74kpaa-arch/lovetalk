@@ -28,7 +28,7 @@ export function initializeFirebase(): FirebaseServices {
   }
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const db = getFirestore(app);
-  const storage = getStorage(app);
+  const storage = getStorage(app, firebaseConfig.storageBucket);
   firebase = { app, db, storage };
   return firebase;
 }
