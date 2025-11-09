@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc, Firestore } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { useFirebase } from '@/firebase/client-provider';
 import type { Message, User, ChatMetadata } from '@/lib/types';
@@ -19,8 +18,30 @@ const users: { [key: string]: User } = {
   user2: { id: 'user2', name: 'Partner' },
 };
 
+async function uploadToCloudinary(file: File | Blob, resourceType: 'image' | 'video' | 'raw'): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'chat-app-unsigned');
+  
+  const endpoint = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+  const response = await fetch(endpoint, {
+      method: 'POST',
+      body: formData,
+  });
+
+  if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Cloudinary upload failed: ${errorData.error.message}`);
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+}
+
+
 function ChatComponent() {
-  const { db, storage } = useFirebase();
+  const { db } = useFirebase();
   const [currentUser, setCurrentUser] = useState<User>(users.user1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loveStreak, setLoveStreak] = useState(0);
@@ -93,11 +114,9 @@ function ChatComponent() {
   };
 
   const handleSendVoice = async (blob: Blob) => {
-    if (!db || !storage) return;
+    if (!db) return;
     try {
-      const storageRef = ref(storage, `voice-notes/${uuidv4()}.webm`);
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const downloadURL = await uploadToCloudinary(blob, 'raw');
 
       await addDoc(collection(db, 'messages'), {
         text: '',
@@ -119,7 +138,7 @@ function ChatComponent() {
   };
   
   const handleSendFile = async (file: File) => {
-    if (!db || !storage) return;
+    if (!db) return;
     
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
@@ -130,18 +149,17 @@ function ChatComponent() {
     }
 
     try {
-      const folder = isImage ? 'images' : 'videos';
-      const storageRef = ref(storage, `${folder}/${uuidv4()}-${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const resourceType = isImage ? 'image' : 'video';
+      const downloadURL = await uploadToCloudinary(file, resourceType);
 
       const message: Partial<Message> = {
         text: '',
-        type: isImage ? 'image' : 'video',
+        type: resourceType,
         createdAt: serverTimestamp(),
         userId: currentUser.id,
         reactions: {},
       };
+
       if (isImage) {
         message.imageUrl = downloadURL;
       } else {
