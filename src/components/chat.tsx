@@ -1,29 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import React, { useState, useEffect, Suspense } from 'react';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, setDoc, updateDoc, Firestore } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { db, storage } from '@/lib/firebase';
+import { useFirebase } from '@/firebase';
 import type { Message, User, ChatMetadata } from '@/lib/types';
 import ChatHeader from '@/components/chat-header';
 import MessageList from '@/components/message-list';
 import MessageInput from '@/components/message-input';
 import UserSwitcher from '@/components/user-switcher';
 import { useToast } from '@/hooks/use-toast';
+import FirebaseClientProvider from '@/firebase/client-provider';
 
 const users: { [key: string]: User } = {
   user1: { id: 'user1', name: 'You' },
   user2: { id: 'user2', name: 'Partner' },
 };
 
-export default function Chat() {
+function ChatComponent() {
+  const { db, storage } = useFirebase();
   const [currentUser, setCurrentUser] = useState<User>(users.user1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loveStreak, setLoveStreak] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!db) return;
     const q = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const msgs: Message[] = [];
@@ -31,50 +34,52 @@ export default function Chat() {
         msgs.push({ id: doc.id, ...doc.data() } as Message);
       });
       setMessages(msgs);
+    }, (error) => {
+        console.error("Error fetching messages: ", error);
+        toast({
+            title: "Error",
+            description: "Could not fetch messages.",
+            variant: "destructive",
+        });
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [db, toast]);
 
   useEffect(() => {
+    if (!db) return;
     const metaRef = doc(db, 'metadata', 'chatInfo');
-    const getStreak = async () => {
-      const docSnap = await getDoc(metaRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data() as ChatMetadata;
-        if (data.firstMessageTimestamp) {
-          const diffInMs = new Date().getTime() - data.firstMessageTimestamp.toDate().getTime();
-          const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-          setLoveStreak(diffInDays + 1);
-        }
-      }
-    };
-    getStreak();
     
-    const unsubscribe = onSnapshot(metaRef, (doc) => {
-        if (doc.exists()) {
-            const data = doc.data() as ChatMetadata;
+    const unsubscribe = onSnapshot(metaRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data() as ChatMetadata;
             if (data.firstMessageTimestamp) {
               const diffInMs = new Date().getTime() - data.firstMessageTimestamp.toDate().getTime();
-              const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-              setLoveStreak(diffInDays + 1);
+              const diffInDays = Math.max(0, Math.floor(diffInMs / (1000 * 60 * 60 * 24)));
+              setLoveStreak(diffInDays + (diffInMs > 0 ? 1 : 0));
+            } else {
+              setLoveStreak(0);
             }
+        } else {
+          setLoveStreak(0);
         }
+    }, (error) => {
+      console.error("Error getting streak: ", error);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [db]);
 
-  const checkAndSetFirstMessage = async () => {
+  const checkAndSetFirstMessage = async (db: Firestore) => {
     const metaRef = doc(db, 'metadata', 'chatInfo');
     const docSnap = await getDoc(metaRef);
     if (!docSnap.exists() || !docSnap.data().firstMessageTimestamp) {
-      await setDoc(metaRef, { firstMessageTimestamp: serverTimestamp() });
+      await setDoc(metaRef, { firstMessageTimestamp: serverTimestamp() }, { merge: true });
     }
   };
 
   const handleSendMessage = async (text: string) => {
-    if (text.trim() === '') return;
+    if (text.trim() === '' || !db) return;
     await addDoc(collection(db, 'messages'), {
       text,
       type: 'text',
@@ -82,10 +87,11 @@ export default function Chat() {
       userId: currentUser.id,
       reactions: {},
     });
-    await checkAndSetFirstMessage();
+    await checkAndSetFirstMessage(db);
   };
 
   const handleSendVoice = async (blob: Blob) => {
+    if (!db || !storage) return;
     try {
       const storageRef = ref(storage, `voice-notes/${uuidv4()}.webm`);
       await uploadBytes(storageRef, blob);
@@ -99,7 +105,7 @@ export default function Chat() {
         userId: currentUser.id,
         reactions: {},
       });
-      await checkAndSetFirstMessage();
+      await checkAndSetFirstMessage(db);
     } catch (error) {
       console.error("Error uploading voice note: ", error);
       toast({
@@ -111,6 +117,7 @@ export default function Chat() {
   };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
+    if (!db) return;
     const messageRef = doc(db, 'messages', messageId);
     const docSnap = await getDoc(messageRef);
 
@@ -141,5 +148,15 @@ export default function Chat() {
       <MessageInput onSendMessage={handleSendMessage} onSendVoice={handleSendVoice} />
       <UserSwitcher currentUser={currentUser} setCurrentUser={setCurrentUser} users={Object.values(users)} />
     </div>
+  );
+}
+
+export default function Chat() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FirebaseClientProvider>
+        <ChatComponent />
+      </FirebaseClientProvider>
+    </Suspense>
   );
 }

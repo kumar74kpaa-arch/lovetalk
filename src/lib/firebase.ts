@@ -1,6 +1,6 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,10 +11,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+type FirebaseServices = {
+  app: FirebaseApp;
+  db: Firestore;
+  storage: FirebaseStorage;
+}
 
-const db = getFirestore(app);
-const storage = getStorage(app);
+let firebase: FirebaseServices | null = null;
 
-export { db, storage };
+export function initializeFirebase(): FirebaseServices {
+  if (typeof window === 'undefined') {
+    throw new Error("Firebase should only be initialized on the client.");
+  }
+  if (firebase) {
+    return firebase;
+  }
+  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+  firebase = { app, db, storage };
+  return firebase;
+}
