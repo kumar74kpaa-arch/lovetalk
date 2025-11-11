@@ -8,7 +8,6 @@ import type { Message, User, ChatMetadata } from '@/lib/types';
 import ChatHeader from '@/components/chat-header';
 import MessageList from '@/components/message-list';
 import MessageInput from '@/components/message-input';
-import UserSwitcher from '@/components/user-switcher';
 import { useToast } from '@/hooks/use-toast';
 import FirebaseClientProvider from '@/firebase/client-provider';
 import Lightbox from './lightbox';
@@ -42,7 +41,7 @@ async function uploadToCloudinary(file: File | Blob, resourceType: 'image' | 'vi
 
 function ChatComponent() {
   const { db } = useFirebase();
-  const [currentUser, setCurrentUser] = useState<User>(users.user1);
+  const [currentUser] = useState<User>(users.user1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loveStreak, setLoveStreak] = useState(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -208,7 +207,6 @@ function ChatComponent() {
       <ChatHeader loveStreak={loveStreak} />
       <MessageList messages={messages} currentUser={currentUser} onAddReaction={handleAddReaction} onImageClick={setLightboxImage} />
       <MessageInput onSendMessage={handleSendMessage} onSendVoice={handleSendVoice} onSendFile={handleSendFile}/>
-      <UserSwitcher currentUser={currentUser} setCurrentUser={setCurrentUser} users={Object.values(users)} />
       {lightboxImage && <Lightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />}
     </div>
   );
