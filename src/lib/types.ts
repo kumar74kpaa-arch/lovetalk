@@ -1,7 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
 export type User = {
-  id: 'user1' | 'user2';
+  id: string;
   name: string;
 };
 

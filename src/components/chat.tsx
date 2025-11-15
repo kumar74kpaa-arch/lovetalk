@@ -12,11 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import FirebaseClientProvider from '@/firebase/client-provider';
 import Lightbox from './lightbox';
 
-const users: { [key: string]: User } = {
-  user1: { id: 'user1', name: 'You' },
-  user2: { id: 'user2', name: 'Partner' },
-};
-
 async function uploadToCloudinary(file: File | Blob, resourceType: 'image' | 'video' | 'raw'): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
@@ -41,11 +36,21 @@ async function uploadToCloudinary(file: File | Blob, resourceType: 'image' | 'vi
 
 function ChatComponent() {
   const { db } = useFirebase();
-  const [currentUser] = useState<User>(users.user1);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loveStreak, setLoveStreak] = useState(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // This code now runs only on the client
+    let userId = localStorage.getItem('chatAppUserId');
+    if (!userId) {
+      userId = uuidv4();
+      localStorage.setItem('chatAppUserId', userId);
+    }
+    setCurrentUser({ id: userId, name: 'User' });
+  }, []);
 
   useEffect(() => {
     if (!db) return;
@@ -101,7 +106,7 @@ function ChatComponent() {
   };
 
   const handleSendMessage = async (text: string) => {
-    if (text.trim() === '' || !db) return;
+    if (text.trim() === '' || !db || !currentUser) return;
     await addDoc(collection(db, 'messages'), {
       text,
       type: 'text',
@@ -113,7 +118,7 @@ function ChatComponent() {
   };
 
   const handleSendVoice = async (blob: Blob) => {
-    if (!db) return;
+    if (!db || !currentUser) return;
     try {
       const downloadURL = await uploadToCloudinary(blob, 'raw');
 
@@ -137,7 +142,7 @@ function ChatComponent() {
   };
   
   const handleSendFile = async (file: File) => {
-    if (!db) return;
+    if (!db || !currentUser) return;
     
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
@@ -178,7 +183,7 @@ function ChatComponent() {
   };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
-    if (!db) return;
+    if (!db || !currentUser) return;
     const messageRef = doc(db, 'messages', messageId);
     const docSnap = await getDoc(messageRef);
 
@@ -201,6 +206,10 @@ function ChatComponent() {
         await updateDoc(messageRef, { reactions: currentReactions });
     }
   };
+
+  if (!currentUser) {
+    return <div className="flex items-center justify-center h-full">Loading chat...</div>;
+  }
 
   return (
     <div className="flex flex-col h-full bg-transparent max-w-2xl mx-auto w-full">
